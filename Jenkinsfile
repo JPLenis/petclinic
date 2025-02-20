@@ -5,7 +5,13 @@ pipeline {
         cron('H/3 * * * 4') // Every 3 minutes on Thursdays
     }
 
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64' // Ensure correct JDK version
+        PATH = "/usr/lib/jvm/java-17-openjdk-amd64/bin:${env.PATH}"
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -14,33 +20,62 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                script {
+                    sh './mvnw clean package'
+                }
             }
         }
 
-        stage('Test and Coverage') {
+        stage('Test and Generate Coverage') {
             steps {
-                sh 'mvn test jacoco:report'
+                script {
+                    sh './mvnw test'
+                }
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml' // Publish test results
+                }
             }
         }
 
-        stage('Publish Report') {
+        stage('JaCoCo Report') {
             steps {
-                junit '**/target/surefire-reports/*.xml'
-                jacoco execPattern: '**/target/jacoco.exec'
+                script {
+                    sh './mvnw jacoco:report'
+                }
+            }
+            post {
+                success {
+                    publishHTML(target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'target/site/jacoco',
+                        reportFiles: 'index.html',
+                        reportName: 'JaCoCo Coverage Report'
+                    ])
+                }
             }
         }
 
-        stage('Archive') {
+        stage('Archive Artifacts') {
             steps {
-                archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
+
     }
 
     post {
         always {
-            echo 'Pipeline finished!'
+            echo 'Pipeline execution completed.'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check the logs for details.'
         }
     }
 }
