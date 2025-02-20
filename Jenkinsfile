@@ -1,13 +1,8 @@
 pipeline {
     agent any
 
-    // This triggers the pipeline every 3 minutes on Thursdays
     triggers {
-        cron('H/3 * * * 4') 
-    }
-
-    environment {
-        MAVEN_HOME = "${tool 'Maven 3.8.8'}" // Ensure Jenkins has Maven installed
+        cron('H/3 * * * 4') // Every 3 minutes on Thursdays
     }
 
     stages {
@@ -19,24 +14,24 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh './mvnw clean package' // Builds the project
+                sh 'mvn clean package'
             }
         }
 
-        stage('Test and Generate Coverage') {
+        stage('Test and Coverage') {
             steps {
-                sh './mvnw test jacoco:report' // Runs tests and generates JaCoCo report
+                sh 'mvn test jacoco:report'
             }
         }
 
         stage('Publish Report') {
             steps {
-                junit '**/target/surefire-reports/*.xml' // Publish test results
-                jacoco execPattern: '**/target/jacoco.exec' // Publish JaCoCo coverage report
+                junit '**/target/surefire-reports/*.xml'
+                jacoco execPattern: '**/target/jacoco.exec'
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Archive') {
             steps {
                 archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
             }
@@ -45,7 +40,7 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline execution completed.'
+            echo 'Pipeline finished!'
         }
     }
 }
